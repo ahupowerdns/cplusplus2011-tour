@@ -1,5 +1,5 @@
+// Public domain software by bert.hubert@netherlabs.nl 
 #include <vector>
-#include <map>
 #include <unordered_map>
 #include <stdlib.h>
 #include <algorithm>
@@ -7,7 +7,6 @@
 #include <iostream>
 #include <string>	
 #include <memory>
-#include <chrono>
 
 using namespace std;
 
@@ -56,7 +55,7 @@ void initList(const initializer_list<int>& args)
 int main()
 {
   // generates a nice error message AT COMPILE TIME if this is not true
-  static_assert(sizeof(long) == 8, "This code requires 64 bits!");
+  static_assert(sizeof(long) == 8, "This code requires 64 bits (not really)");
   
   // -----------------------------------------------
   
