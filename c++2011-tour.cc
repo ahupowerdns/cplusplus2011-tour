@@ -5,8 +5,9 @@
 #include <algorithm>
 #include <list>
 #include <iostream>
-#include <string>	
+#include <string>    
 #include <memory>
+#include <stdexcept>
 
 using namespace std;
 
@@ -25,7 +26,7 @@ class NoCopy
     NoCopy(NoCopy&& rhs) // this is a 'move' constructor which *kills* the donor
     {
       d_s = rhs.d_s;
-      rhs.d_s = 0;
+      rhs.d_s = nullptr;
       cout << "Move constructed "<<*d_s<<", we are @" <<(void*)this<<", they were @"<<(void*)&rhs <<endl;
     }
     
@@ -37,13 +38,36 @@ class NoCopy
     ~NoCopy() 
     {
       if(d_s)
-	cout<<"Being destroyed "<<*d_s <<", we were @"<<(void*)this<<endl;
+    cout<<"Being destroyed "<<*d_s <<", we were @"<<(void*)this<<endl;
       delete d_s;
     }
   private:
-    int* d_s = 0;   // YEAH FINALLY - we can set defaults! just like that!
+    int* d_s = nullptr;   // YEAH FINALLY - we can set defaults! just like that! Nullptr meanwhile is a typesafe way to specify a null pointer
+  
 };
 
+// make no mistake, what follows is a functional printf (except conversion & formatting stuff)
+void tprintf(const char* s)    
+{
+  while (s && *s) {
+    if (*s=='%' && *++s!='%')   // make sure that there wasn't meant to be more arguments
+      throw runtime_error("invalid format: missing arguments");
+    std::cout << *s++;
+  }
+}
+
+template<typename T, typename... Args>            // note the "..."
+void tprintf(const char* s, T& value, Args... args)    // note the "..."
+{
+  while (s && *s) {
+    if (*s=='%' && *++s!='%') {         // a format specifier (ignore which one it is)
+      cout << value;                    // use first non-format argument
+      return tprintf(++s, args...);     // "peel off" first argument
+    }
+    cout << *s++;                       // this is where the magic happens
+  }
+  throw std::runtime_error("extra arguments provided to printf");
+}
 
 // shows how you can use initialized_lists yourself
 void initList(const initializer_list<int>& args)
@@ -56,7 +80,6 @@ int main()
 {
   // generates a nice error message AT COMPILE TIME if this is not true
   static_assert(sizeof(long) == 8, "This code requires 64 bits (not really)");
-  
   // -----------------------------------------------
   
   // this is a powerful new way to initialize a lot of things
@@ -65,9 +88,7 @@ int main()
   // powered by 'variadic templates' 
   
   // -----------------------------------------------
-  
   // char c{129};     // this generates an error, 129 does not fit in a signed char
-  
   // -----------------------------------------------
   
   // sort our vector using a lambda function as comparison
@@ -136,10 +157,8 @@ int main()
   
   
   // -----------------------------------------------
-  
   // see the function above
   initList({1,2,3,4});
-  
   // -----------------------------------------------
   
   NoCopy nc(1), bc(2);
@@ -180,18 +199,23 @@ int main()
     for(unsigned int n = 0; n < 4; ++n) {
       upncvec.push_back(unique_ptr<NoCopy>(new NoCopy(n)));
     }
-    upncvec[3]->getS(); 			 // this is fine, gets a reference
+    upncvec[3]->getS();                          // this is fine, gets a reference
     unique_ptr<NoCopy> loose = move(upncvec[3]); // now we are f*cked
     // upncvec[3]->getS();                       // crashes - only move if you know what you are doing
   }
   cout<<"and 4 destructions"<<endl;
   
+  // ----------------------------------------------
+  // note how we printf std::string here. This tprintf is built from a variadic template
+  string str{"hi"};
+  tprintf( R"(Behold "%s" works: %s %c)", "this", str, '\n');
   // -----------------------------------------------
+  
   NoCopy A(123);
   cout << "A.getS(): "<< A.getS() << endl;
   NoCopy B(move(A));
   cout << "B.getS(): "<< B.getS() << endl;
   cout << "Will now crash: A.getS(): "; cout.flush(); cout << A.getS() << endl;
   
-  // -----------------------------------------------
+  
 }
